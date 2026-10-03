@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Směnovník</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mut:#5d6b78;--line:#d5dce3;--acc:#0f766e;--v:#9aa7b3;--warn:#b45309;--warnbg:#fef3c7;--err:#b91c1c;--errbg:#fee2e2;--kon:#6d28d9;--konbg:#ede9fe;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e151b;--card:#18222b;--ink:#e8eef3;--mut:#9aa9b6;--line:#2b3946;--acc:#2dd4bf;--warn:#fcd34d;--warnbg:#3b2f0b;--err:#fca5a5;--errbg:#451a1a;--kon:#c4b5fd;--konbg:#2e2150}}
+:root[data-theme="dark"]{--bg:#0e151b;--card:#18222b;--ink:#e8eef3;--mut:#9aa9b6;--line:#2b3946;--acc:#2dd4bf;--warn:#fcd34d;--warnbg:#3b2f0b;--err:#fca5a5;--errbg:#451a1a;--kon:#c4b5fd;--konbg:#2e2150}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+header{padding:14px 16px 4px}
+h1{margin:0;font-size:22px;letter-spacing:-.02em}
+h2{margin:0;font-size:19px}h3{margin:18px 0 8px;font-size:16px}
+main{padding:8px 12px 96px;max-width:1100px;margin:0 auto}
+.v{display:none}
+body[data-t=tyden] #tyden,body[data-t=dny14] #dny14,body[data-t=nast] #nast{display:block}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1100px;margin:0 auto;padding:14px 16px 4px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
+nav button{flex:1;min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent;color:var(--mut);font-weight:600;font-size:13px;line-height:1.2;cursor:pointer}
+nav button i{font-style:normal;font-size:22px;line-height:1}
+body[data-t=tyden] nav [data-t=tyden],body[data-t=dny14] nav [data-t=dny14],body[data-t=nast] nav [data-t=nast]{background:var(--acc);color:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.chip{min-height:44px;padding:0 16px;border-radius:22px;border:2px solid var(--line);background:var(--card);font-weight:600}
+.chip.on{border-color:var(--c,var(--acc));box-shadow:inset 0 0 0 1px var(--c,var(--acc))}
+.nav{display:flex;align-items:center;gap:8px;margin:6px 0}
+.nav button{min-width:48px;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:20px}
+.nav .t{flex:1;text-align:center}
+.nav .t small{display:block;color:var(--mut)}
+.den{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-left:10px solid var(--bc,var(--v));border-radius:14px;padding:12px 14px;margin:0 0 10px;min-height:76px;cursor:pointer}
+.den.dnes{outline:3px solid var(--acc);outline-offset:1px}
+.den.k{min-height:60px;padding:8px 12px;margin-bottom:6px}
+.dh{display:flex;justify-content:space-between;color:var(--mut);font-size:14px}
+.dh b{color:var(--ink)}
+.sm{display:flex;align-items:baseline;gap:10px;margin-top:2px}
+.sm .kod{font-size:30px;font-weight:800;color:var(--bc,var(--v));min-width:30px}
+.k .sm .kod{font-size:22px}
+.sm .tm{font-size:18px;font-weight:600}
+.mut{color:var(--mut);font-size:14px}
+.tag{display:inline-block;border-radius:6px;padding:1px 8px;font-size:13px;font-weight:600;background:var(--line);margin-left:6px}
+.up{margin-top:6px;padding:6px 10px;border-radius:8px;font-size:14px;font-weight:600}
+.up.chyba{background:var(--errbg);color:var(--err)}.up.varovani{background:var(--warnbg);color:var(--warn)}.up.konflikt{background:var(--konbg);color:var(--kon)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:14px;color:var(--mut);margin:8px 0 2px}
+input,select,textarea{width:100%;min-height:46px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+input[type=color]{padding:2px;min-width:56px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:600;cursor:pointer}
+.btn.p{background:var(--acc);color:var(--bg);border-color:var(--acc)}.btn.d{color:var(--err)}
+.vzor{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.vzor button{min-height:56px;border-radius:10px;border:2px solid var(--line);background:var(--bg);font-weight:800;font-size:20px;position:relative}
+.vzor small{position:absolute;top:2px;left:5px;font-size:10px;font-weight:500;color:var(--mut)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.ov.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.volba{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.volba button{min-height:64px;border-radius:12px;border:3px solid var(--line);background:var(--bg);font-weight:800;font-size:22px}
+.volba button.on{border-color:var(--acc)}
+.volba small{display:block;font-size:12px;font-weight:500;color:var(--mut)}
+textarea{min-height:90px}
+.sm{flex-wrap:wrap}
+.pas,.mrizka{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0}
+.bun{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;padding:6px 2px;min-height:72px;border:2px solid var(--line);border-bottom:5px solid var(--bc,var(--v));border-radius:12px;background:var(--card);cursor:pointer;position:relative;overflow-wrap:anywhere;text-align:center}
+.bun.dnes{outline:3px solid var(--acc);outline-offset:1px}
+.bun.vyj{border-style:dashed}
+.bd{font-size:12px;color:var(--mut)}.bk{font-size:24px;font-weight:800;line-height:1.1;color:var(--bc,var(--v))}
+.bn,.bt{display:none;font-size:11px;line-height:1.2}.bn{font-weight:700}.bt{color:var(--mut)}
+.pas .bn,.pas .bt{display:none!important}
+.w{position:absolute;top:-7px;right:-5px;box-shadow:0 0 0 2px var(--card);font-style:normal;font-weight:800;font-size:12px;width:16px;height:16px;line-height:16px;border-radius:8px}
+.w.chyba{background:var(--errbg);color:var(--err)}.w.varovani{background:var(--warnbg);color:var(--warn)}.w.konflikt{background:var(--konbg);color:var(--kon)}
+.dalsi{background:var(--card);border:1px solid var(--line);border-left:10px solid var(--bc,var(--v));border-radius:14px;padding:12px 14px;margin:8px 0}
+.dalsi .sm{margin:2px 0}
+.den:focus-visible,.bun:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:4px solid var(--ink);outline-offset:2px}
+@media(hover:hover){.den:hover,.bun:hover,.chip:hover,.vzor button:hover,.volba button:hover{box-shadow:0 0 0 2px var(--acc)}.btn:hover,.nav button:hover{border-color:var(--acc)}nav button:hover{background:var(--line)}}
+@media(min-width:860px){
+ main{padding:12px 16px 40px}
+ main#prehled:not(.nastv){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}
+ body[data-t=tyden] #dny14,body[data-t=dny14] #tyden{display:block}
+ body[data-t=nast] #nast{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start}
+ #nast h2{grid-column:1/-1}
+ nav{position:static;background:none;border:0;padding:0;gap:4px}
+ nav button{flex:none;flex-direction:row;gap:8px;min-height:44px;padding:0 16px;font-size:15px}
+ nav [data-t=dny14]{display:none}
+ body[data-t=dny14] nav [data-t=tyden]{background:var(--acc);color:var(--bg)}
+ .mrizka .bn,.mrizka .bt{display:block}
+ .mrizka .bun{min-height:112px;padding:8px 3px}.mrizka .bk{font-size:30px}
+ .ov{align-items:center;padding:20px}.sheet{border-radius:18px;max-width:480px;max-height:100%;overflow:auto}
+}
+</style>
+</head>
+<body data-t="tyden">
+<header><h1>Směnovník</h1><nav aria-label="Hlavní navigace"><button data-t="tyden"><i>▤</i><span>Týden</span></button><button data-t="dny14"><i>▦</i><span>14 dní</span></button><button data-t="nast"><i>⚙</i><span>Nastavení</span></button></nav></header>
+<main id="prehled">
+  <section id="tyden" class="v"></section>
+  <section id="dny14" class="v"></section>
+  <section id="nast" class="v"></section>
+</main>
+<div class="ov" id="ov"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<script>
+/* Směnovník – logika rozpisu. Čistý JS, bez UI a knihoven.
+ * Použití v HTML: vložit jako skript → window.Smenovnik.*; v Node module.exports.
+ * Datum "YYYY-MM-DD", čas "HH:MM" (24 h), týden začíná pondělím.
+ * Všechny časy se počítají nominálně (UTC aritmetika), změna letního času se ignoruje:
+ * noční směna má vždy 12 h. Směna s "do" <= "od" končí následující den a počítá
+ * se do dne začátku. */
+(function () {
+  'use strict';
+  const DEN = 86400000, HOD = 3600000;
+  const NASTAVENI_VYCHOZI = {
+    datum_zacatku_cyklu: '2026-10-12',
+    vzor: ['V','V','N','N','V','V','V','D','D','V','V','N','N','N'],
+    smeny: { D: { od: '06:00', do: '18:00' }, N: { od: '18:00', do: '06:00' } },
+    pravidla: { pauza_h: 11, max_hodin_cyklus: 84, max_nocnich_po_sobe: 3, min_souvisle_volno_h: 35 }
+  };
+  /* ---------- pomocné ---------- */
+  function mod(a, n) { return ((a % n) + n) % n; }
+  function dny(datum) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) throw new Error('Neplatné datum: ' + datum);
+    const p = datum.split('-');
+    const n = Date.UTC(+p[0], +p[1] - 1, +p[2]) / DEN;
+    if (datum_z_dnu(n) !== datum) throw new Error('Neplatné datum: ' + datum);
+    return n;
+  }
+  function datum_z_dnu(n) { return new Date(n * DEN).toISOString().slice(0, 10); }
+  function cas_ms(datum, hhmm) {
+    const p = datum.split('-'), c = hhmm.split(':');
+    return Date.UTC(+p[0], +p[1] - 1, +p[2], +c[0], +c[1]);
+  }
+  function iso(ms) { return new Date(ms).toISOString().slice(0, 16); } // YYYY-MM-DDTHH:MM
+  function ms_z_iso(s) { const d = s.split('T'); return cas_ms(d[0], d[1]); }
+  function trvani_h(r) { return (ms_z_iso(r.do) - ms_z_iso(r.od)) / HOD; }
+  const UROVEN = { prekryv: 'chyba', pauza: 'chyba', volno: 'chyba', nocni: 'varovani', max_hodin_cyklus: 'varovani' };
+  function chyba(pravidlo, datum, zprava) {
+    return { pravidlo: pravidlo, uroven: UROVEN[pravidlo] || 'chyba', datum: datum, zprava: zprava };
+  }
+  function pole(x) { return Array.isArray(x) ? x : []; }
+  function serazene(rozpis) {
+    return pole(rozpis).slice().sort(function (a, b) { return dny(a.datum) - dny(b.datum); });
+  }
+  function smeny_serazene(rozpis) {
+    return pole(rozpis).filter(function (r) { return r.smena !== 'V' && r.od; })
+      .map(function (r) { return { r: r, od: ms_z_iso(r.od), do: ms_z_iso(r.do) }; })
+      .sort(function (a, b) { return a.od - b.od; });
+  }
+  function najdi_vyjimku(datum, vyjimky) {
+    if (!vyjimky) return null;
+    for (let i = 0; i < vyjimky.length; i++) if (vyjimky[i].datum === datum) return vyjimky[i];
+    return null;
+  }
+  function vzor_smena(datum, nastaveni, posun) {
+    const vz = nastaveni.vzor;
+    // posun_dnu: vzor osoby začíná o posun dnů později než základní cyklus
+    const i = mod(dny(datum) - dny(nastaveni.datum_zacatku_cyklu) - (posun || 0), vz.length);
+    return vz[i];
+  }
+  function radek(datum, kod, nastaveni, vyj, puvodni) {
+    const r = { datum: datum, smena: kod, od: null, do: null, vyjimka: false };
+    if (kod !== 'V') {
+      const s = nastaveni.smeny[kod];
+      const od = cas_ms(datum, s.od);
+      let konec = cas_ms(datum, s.do);
+      if (konec <= od) konec += DEN; // přes půlnoc → další den
+      r.od = iso(od); r.do = iso(konec);
+    }
+    if (vyj) { r.vyjimka = true; r.poznamka = vyj.poznamka || ''; r.puvodni = puvodni; }
+    return r;
+  }
+  /* ---------- rozpis ---------- */
+  // vyjimky (nepovinné): pole {datum, smena: V|D|N, poznamka} pro danou osobu
+  function smena_pro_den(datum, nastaveni, posun, vyjimky) {
+    const v = najdi_vyjimku(datum, vyjimky);
+    if (v) {
+      if (['V', 'D', 'N'].indexOf(v.smena) < 0) throw new Error('Neplatná směna ve výjimce: ' + v.smena);
+      return v.smena;
+    }
+    return vzor_smena(datum, nastaveni, posun);
+  }
+  function generuj_rozpis(od, do_, nastaveni, posun, vyjimky) {
+    const a = dny(od), b = dny(do_), out = [];
+    for (let n = a; n <= b; n++) {
+      const d = datum_z_dnu(n);
+      const v = najdi_vyjimku(d, vyjimky);
+      const kod = smena_pro_den(d, nastaveni, posun, vyjimky);
+      out.push(radek(d, kod, nastaveni, v, v ? vzor_smena(d, nastaveni, posun) : null));
+    }
+    return out;
+  }
+  /* ---------- hodiny ---------- */
+  // Okno začíná v libovolný den (datum_od) a trvá delka_dni (výchozí 7; 14 = cyklus).
+  function hodiny_za_tyden(rozpis, datum_od, delka_dni) {
+    const a = dny(datum_od), b = a + (delka_dni || 7) - 1;
+    let smeny = 0, hodiny = 0;
+    pole(rozpis).forEach(function (r) {
+      if (r.smena === 'V') return;
+      const d = dny(r.datum);
+      if (d >= a && d <= b) { smeny++; hodiny += trvani_h(r); }
+    });
+    return { smeny: smeny, hodiny: hodiny };
+  }
+  function hodiny_za_cyklus(rozpis, datum_zacatku, delka) {
+    const a = dny(datum_zacatku), b = a + (delka || 14) - 1;
+    let h = 0;
+    pole(rozpis).forEach(function (r) {
+      if (r.smena === 'V') return;
+      const d = dny(r.datum);
+      if (d >= a && d <= b) h += trvani_h(r);
+    });
+    return h;
+  }
+  /* ---------- kontroly ---------- */
+  function kontrola_prekryvu(rozpis) {
+    const s = smeny_serazene(rozpis), chyby = [];
+    for (let i = 1; i < s.length; i++) {
+      if (s[i].od < s[i - 1].do) {
+        chyby.push(chyba('prekryv', s[i].r.datum,
+          'Směna ' + s[i].r.datum + ' se překrývá se směnou ' + s[i - 1].r.datum + '.'));
+      }
+    }
+    return chyby;
+  }
+  function kontrola_pauzy(rozpis, pauza_h) {
+    const s = smeny_serazene(rozpis), chyby = [];
+    for (let i = 1; i < s.length; i++) {
+      const mezera = (s[i].od - s[i - 1].do) / HOD;
+      if (mezera >= 0 && mezera < pauza_h) {
+        chyby.push(chyba('pauza', s[i].r.datum,
+          'Pauza před směnou ' + s[i].r.datum + ' je ' + mezera + ' h (min. ' + pauza_h + ' h).'));
+      }
+    }
+    return chyby;
+  }
+  function kontrola_nocnich_po_sobe(rozpis, max) {
+    const chyby = [];
+    let serie = 0, posl = null;
+    serazene(rozpis).forEach(function (r) {
+      if (r.smena !== 'N') return;
+      const d = dny(r.datum);
+      serie = (posl !== null && d === posl + 1) ? serie + 1 : 1;
+      posl = d;
+      if (serie === max + 1) {
+        chyby.push(chyba('nocni', r.datum,
+          'Více než ' + max + ' noční po sobě (od ' + datum_z_dnu(d - max) + ').'));
+      }
+    });
+    return chyby;
+  }
+  // V každém 7denním okně (od 00:00 prvního dne) musí být souvislé volno >= min_h.
+  // Kontrolují se jen úplná okna uvnitř rozpisu (první den se vynechá kvůli noční z předchozího dne).
+  function kontrola_volna(rozpis, min_h) {
+    const chyby = [], r = serazene(rozpis);
+    if (!r.length) return chyby;
+    const prvni = dny(r[0].datum), posl = dny(r[r.length - 1].datum);
+    const s = smeny_serazene(rozpis);
+    for (let den = prvni + 1; den + 6 <= posl; den++) {
+      const ws = den * DEN, we = (den + 7) * DEN;
+      let kurzor = ws, nejdelsi = 0;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i].do <= ws || s[i].od >= we) continue;
+        nejdelsi = Math.max(nejdelsi, Math.max(s[i].od, ws) - kurzor);
+        kurzor = Math.max(kurzor, Math.min(s[i].do, we));
+      }
+      nejdelsi = Math.max(nejdelsi, we - kurzor);
+      if (nejdelsi / HOD < min_h) {
+        chyby.push(chyba('volno', datum_z_dnu(den),
+          'V týdnu od ' + datum_z_dnu(den) + ' je nejdelší souvislé volno ' + (nejdelsi / HOD) +
+          ' h (min. ' + min_h + ' h).'));
+      }
+    }
+    return chyby;
+  }
+  // Klouzavé okno o délce cyklu (14 dní): součet hodin nesmí překročit max_h.
+  function kontrola_cyklu(rozpis, max_h, delka) {
+    const chyby = [], r = serazene(rozpis);
+    if (!r.length) return chyby;
+    const L = delka || 14, h = {};
+    r.forEach(function (x) {
+      if (x.smena !== 'V') { const d = dny(x.datum); h[d] = (h[d] || 0) + trvani_h(x); }
+    });
+    const prvni = dny(r[0].datum), posl = dny(r[r.length - 1].datum);
+    for (let a = prvni; a + L - 1 <= posl; a++) {
+      let soucet = 0;
+      for (let d = a; d < a + L; d++) soucet += h[d] || 0;
+      if (soucet > max_h) {
+        chyby.push(chyba('max_hodin_cyklus', datum_z_dnu(a),
+          'Za ' + L + ' dní od ' + datum_z_dnu(a) + ' je ' + soucet + ' h (max. ' + max_h + ' h).'));
+      }
+    }
+    return chyby;
+  }
+  function kontrola_vsech_pravidel(rozpis, nastaveni) {
+    const p = nastaveni.pravidla;
+    const chyby = [].concat(
+      kontrola_prekryvu(rozpis),
+      kontrola_pauzy(rozpis, p.pauza_h),
+      kontrola_nocnich_po_sobe(rozpis, p.max_nocnich_po_sobe),
+      kontrola_volna(rozpis, p.min_souvisle_volno_h),
+      kontrola_cyklu(rozpis, p.max_hodin_cyklus, nastaveni.vzor.length)
+    );
+    return { ok: chyby.length === 0, chyby: chyby };
+  }
+  /* ---------- více lidí ---------- */
+  // rozpisy_osob: { osoba_id: rozpis[] } → [{typ: "N"|"D", osoby: [osoba_id], text}], [] = bez konfliktu
+  function konflikt_lidi(rozpisy_osob, datum) {
+    const osoby = { D: [], N: [] };
+    let n = 0;
+    Object.keys(rozpisy_osob || {}).forEach(function (id) {
+      const r = pole(rozpisy_osob[id]).filter(function (x) { return x.datum === datum; })[0];
+      if (!r) return;
+      n++;
+      if (osoby[r.smena]) osoby[r.smena].push(id);
+    });
+    const nazev = { N: 'noční', D: 'denní' }, out = [];
+    ['N', 'D'].forEach(function (k) {
+      const o = osoby[k];
+      if (o.length < 2) return;
+      const text = o.length === n
+        ? (n === 2 ? 'oba' : 'všichni') + ' mají ' + nazev[k]
+        : o.length + ' z ' + n + ' mají ' + nazev[k];
+      out.push({ typ: k, osoby: o, text: text });
+    });
+    return out;
+  }
+  // Návrh pokrytí jen tam, kde výjimka (např. dovolená) uvolnila vzorovou směnu
+  // a nikdo jiný ji ten den nemá. Vzor se nemění, navrhují se pouze výjimky.
+  // Návrh musí projít pravidly; jediná tolerovaná výjimka je překročení max_hodin_cyklus (varování).
+  function doplň_rozpis(rozpisy_osob, nastaveni) {
+    rozpisy_osob = rozpisy_osob || {};
+    const ids = Object.keys(rozpisy_osob), navrhy = [], nelze = [];
+    if (ids.length < 2) return { navrhy: navrhy, nelze: nelze };
+    const klic = function (c) { return c.pravidlo + '|' + c.datum; };
+    ids.forEach(function (id) {
+      pole(rozpisy_osob[id]).forEach(function (r) {
+        if (!(r.vyjimka && r.smena === 'V' && r.puvodni && r.puvodni !== 'V')) return;
+        const kod = r.puvodni;
+        const kryto = ids.some(function (j) {
+          return j !== id && pole(rozpisy_osob[j]).some(function (x) { return x.datum === r.datum && x.smena === kod; });
+        });
+        if (kryto) return;
+        let nejlepsi = null;
+        ids.forEach(function (j) {
+          if (j === id) return;
+          const radky = pole(rozpisy_osob[j]);
+          const idx = radky.findIndex(function (x) { return x.datum === r.datum; });
+          if (idx < 0 || radky[idx].smena !== 'V') return;
+          const zaklad = {};
+          kontrola_vsech_pravidel(radky, nastaveni).chyby.forEach(function (c) { zaklad[klic(c)] = 1; });
+          const upraveny = radky.slice();
+          upraveny[idx] = radek(r.datum, kod, nastaveni, { poznamka: 'návrh: převzetí směny' }, 'V');
+          const nove = kontrola_vsech_pravidel(upraveny, nastaveni).chyby.filter(function (c) { return !zaklad[klic(c)]; });
+          if (nove.some(function (c) { return c.pravidlo !== 'max_hodin_cyklus'; })) return;
+          const varovani = nove.length ? ['max_hodin_cyklus'] : [];
+          if (!nejlepsi || (nejlepsi.varovani.length && !varovani.length)) {
+            nejlepsi = { datum: r.datum, smena: kod, osoba_id: j, od: upraveny[idx].od, do: upraveny[idx].do, varovani: varovani };
+          }
+        });
+        if (nejlepsi) navrhy.push(nejlepsi);
+        else nelze.push({ datum: r.datum, smena: kod, duvod: 'nikdo nemůže směnu převzít' });
+      });
+    });
+    return { navrhy: navrhy, nelze: nelze };
+  }
+  const API = {
+    NASTAVENI_VYCHOZI: NASTAVENI_VYCHOZI,
+    smena_pro_den: smena_pro_den,
+    generuj_rozpis: generuj_rozpis,
+    hodiny_za_tyden: hodiny_za_tyden,
+    hodiny_za_cyklus: hodiny_za_cyklus,
+    kontrola_prekryvu: kontrola_prekryvu,
+    kontrola_pauzy: kontrola_pauzy,
+    kontrola_nocnich_po_sobe: kontrola_nocnich_po_sobe,
+    kontrola_volna: kontrola_volna,
+    kontrola_cyklu: kontrola_cyklu,
+    kontrola_vsech_pravidel: kontrola_vsech_pravidel,
+    konflikt_lidi: konflikt_lidi,
+    'doplň_rozpis': doplň_rozpis,
+    dopln_rozpis: doplň_rozpis
+  };
+  if (typeof window !== 'undefined') window.Smenovnik = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})();
+</script>
+<script>
+"use strict";
+/* ---------- pomocné ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pd=s=>{const[a,b,c]=s.split('-').map(Number);return Date.UTC(a,b-1,c)/864e5};
+const fd=n=>new Date(n*864e5).toISOString().slice(0,10);
+const dnes=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5};
+const dm=n=>{const[,m,d]=fd(n).split('-');return `${+d}. ${+m}.`};
+const DNY=['Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota','Neděle'];
+const dnyN=n=>DNY[(n+3)%7];
+const hm=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+const plur=n=>n===1?'směna':(n>=2&&n<=4?'směny':'směn');
+const cislo=x=>String(Math.round(x*10)/10).replace('.',',');
+
+/* ---------- stav ---------- */
+const KEY='smenovnik_v1';
+const vychozi=()=>({
+  nastaveni:{datum_zacatku_cyklu:'2026-10-12',
+    vzor:["V","V","N","N","V","V","V","D","D","V","V","N","N","N"],
+    smeny:{D:{nazev:'Denní',barva:'#d97706',od:'06:00',do:'18:00'},N:{nazev:'Noční',barva:'#4f46e5',od:'18:00',do:'06:00'}},
+    pravidla:{pauza_h:11,max_hodin_cyklus:84,max_nocnich_po_sobe:3,min_souvisle_volno_h:35}},
+  lide:[{id:'ja',jmeno:'Já',role:'',barva:'#0f766e',posun_dnu:0}],
+  zasahy:[],
+  ui:{rezim:'rodina',tema:'auto',zacatek_tydne:1,ulozit:true,osoba:'ja',tyden:0,tab:'tyden'}
+});
+let S=vychozi();
+const data=()=>({nastaveni:S.nastaveni,lide:S.lide,zasahy:S.zasahy});
+function nacti(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.nastaveni&&o.lide){S=Object.assign(vychozi(),o);S.ui=Object.assign(vychozi().ui,o.ui)}}}catch(e){}}
+function uloz(){if(!S.ui.ulozit)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+/* ---------- adaptér UI ↔ Smenovnik (jen převody, žádné výpočty) ---------- */
+const hhmm=s=>s.slice(11,16);
+const posunOsoby=id=>{const o=S.lide.find(l=>l.id===id);return o?Math.trunc(+o.posun_dnu||0):0};
+const zacatekOsoby=id=>pd(S.nastaveni.datum_zacatku_cyklu)+posunOsoby(id);
+const vyjimkyOsoby=id=>S.zasahy.filter(z=>z.osoba_id===id).map(z=>({datum:z.datum,smena:z.smena,poznamka:z.poznamka||''}));
+/* rozpis od Datáře jen pro dny od začátku cyklu osoby */
+function rozpisRaw(id,a,b){const s=Math.max(a,zacatekOsoby(id));return s>b?[]:Smenovnik.generuj_rozpis(fd(s),fd(b),S.nastaveni,posunOsoby(id),vyjimkyOsoby(id))}
+/* rozpis pro UI: položka na každý den, před začátkem null */
+function rozpisUI(id,a,b){const m={};rozpisRaw(id,a,b).forEach(r=>m[r.datum]=r);const o=[];for(let n=a;n<=b;n++){const r=m[fd(n)];o.push(r?{datum:r.datum,osoba_id:id,kod:r.smena,od:r.od?hhmm(r.od):null,do:r.do?hhmm(r.do):null,presahne:!!r.od&&r.do.slice(0,10)!==r.od.slice(0,10),vyjimka:r.vyjimka,poznamka:r.poznamka||''}:null)}return o}
+const hodiny_tyden=(id,ws)=>Smenovnik.hodiny_za_tyden(rozpisRaw(id,ws,ws+6),fd(ws),7);
+function hodiny_cyklus(id){const s=zacatekOsoby(id);return Smenovnik.hodiny_za_tyden(Smenovnik.generuj_rozpis(fd(s),fd(s+13),S.nastaveni,posunOsoby(id),[]),fd(s),14)}
+const kontroly=(id,a,b)=>Smenovnik.kontrola_vsech_pravidel(rozpisRaw(id,a-7,b),S.nastaveni).chyby.map(c=>({datum:c.datum,uroven:c.uroven,text:c.zprava}));
+function konflikty(a,b){const r={};S.lide.forEach(l=>r[l.id]=rozpisRaw(l.id,a,b));return dt=>Smenovnik.konflikt_lidi(r,dt).map(k=>({uroven:'konflikt',text:k.text.charAt(0).toUpperCase()+k.text.slice(1)}))}
+function upozorneni(n,ko,kf){const dt=fd(n);return ko.filter(x=>x.datum===dt).concat(S.lide.length>1?kf(dt):[])}
+
+/* ---------- vykreslení ---------- */
+function barvaSmeny(kod){return kod==='V'?'var(--v)':(S.nastaveni.smeny[kod]||{}).barva||'var(--v)'}
+function nazevSmeny(kod){return kod==='V'?'Volno':(S.nastaveni.smeny[kod]||{}).nazev||kod}
+function karta(s,n,kon,kompakt){
+  const t=n===dnes(),bc=s?barvaSmeny(s.kod):'var(--v)';
+  let h=`<button class="den${t?' dnes':''}${kompakt?' k':''}" style="--bc:${bc}" data-d="${fd(n)}">`;
+  h+=`<div class="dh"><b>${dnyN(n)} ${dm(n)}</b><span>${t?'Dnes':''}${s&&s.vyjimka?'<span class="tag">upraveno</span>':''}</span></div>`;
+  if(!s)h+=`<div class="mut">před začátkem cyklu</div>`;
+  else{
+    const tm=s.kod==='V'?'':`${esc(s.od)}–${esc(s.do)}${s.presahne?' (+1 den)':''}`;
+    h+=`<div class="sm"><span class="kod">${s.kod}</span><span class="tm">${esc(nazevSmeny(s.kod))}</span><span class="tm mut">${tm}</span></div>`;
+    if(s.poznamka)h+=`<div class="mut">✎ ${esc(s.poznamka)}</div>`;
+  }
+  kon.forEach(k=>h+=`<div class="up ${k.uroven||k.u}">${esc(k.text)}</div>`);
+  return h+'</button>';
+}
+const KR=['Po','Út','St','Čt','Pá','So','Ne'];
+function bun(s,n,up){
+  const t=n===dnes(),bc=s?barvaSmeny(s.kod):'var(--v)';
+  const tm=s&&s.kod!=='V'?`${esc(s.od)}–<wbr>${esc(s.do)}${s.presahne?' +1':''}`:'';
+  const u=up.some(x=>x.uroven==='chyba')?'chyba':up.some(x=>x.uroven==='varovani')?'varovani':up.length?'konflikt':'';
+  return `<button class="bun${t?' dnes':''}${s&&s.vyjimka?' vyj':''}" style="--bc:${bc}" data-d="${fd(n)}" aria-label="${dnyN(n)} ${dm(n)}${s?', '+esc(nazevSmeny(s.kod)):''}"><span class="bd">${KR[(n+3)%7]} ${+fd(n).slice(8)}.</span><span class="bk">${s?s.kod:'–'}</span><span class="bn">${s?esc(nazevSmeny(s.kod)):''}</span><span class="bt">${tm}</span>${u?`<i class="w ${u}">!</i>`:''}</button>`;
+}
+function render(){
+  const os=S.ui.osoba,t0=dnes();
+  document.documentElement.dataset.theme=S.ui.tema==='auto'?'':S.ui.tema;
+  document.body.dataset.t=S.ui.tab;
+  $('#prehled').classList.toggle('nastv',S.ui.tab==='nast');
+  const base=t0+7*S.ui.tyden,ws=base-(S.ui.zacatek_tydne===1?(base+3)%7:(base+4)%7);
+  const lo=Math.min(ws,t0),hi=Math.max(ws+6,t0+13),ko=kontroly(os,lo,hi),kf=konflikty(lo,hi);
+  const up=n=>upozorneni(n,ko,kf),rw=rozpisUI(os,ws,ws+6),r14=rozpisUI(os,t0,t0+13),ht=hodiny_tyden(os,ws),hc=hodiny_cyklus(os);
+  const o=S.lide.find(l=>l.id===os)||S.lide[0],nx=rozpisUI(os,t0,t0+28).find(s=>s&&s.kod!=='V');
+  const chips=S.lide.length>1?`<div class="chips">${S.lide.map(l=>`<button class="chip${l.id===os?' on':''}" style="--c:${esc(l.barva)}" data-os="${esc(l.id)}">${esc(l.jmeno)}</button>`).join('')}</div>`:'';
+  let h=`<h2>Moje směny tento týden</h2>${chips}`;
+  h+=nx?`<div class="dalsi" style="--bc:${barvaSmeny(nx.kod)}"><span class="mut">Další směna</span><div class="sm"><span class="kod">${nx.kod}</span><span class="tm">${esc(nazevSmeny(nx.kod))}</span></div><div>${dnyN(pd(nx.datum))} ${dm(pd(nx.datum))}, ${esc(nx.od)}–${esc(nx.do)}${nx.presahne?' (+1 den)':''}</div></div>`:`<div class="dalsi"><span class="mut">Další směna</span><div>V nejbližších 4 týdnech žádná.</div></div>`;
+  h+=`<div class="nav"><button data-w="-1" aria-label="Předchozí týden">‹</button><div class="t"><b>${ht.smeny} ${plur(ht.smeny)}, ${cislo(ht.hodiny)} h</b><small>${dm(ws)} – ${dm(ws+6)}${S.ui.tyden?' · <a href="#" data-w="0">dnes</a>':''}</small></div><button data-w="1" aria-label="Další týden">›</button></div>`;
+  h+=`<div class="pas">${rw.map((s,i)=>bun(s,ws+i,up(ws+i))).join('')}</div>`;
+  rw.forEach((s,i)=>h+=karta(s,ws+i,up(ws+i),true));
+  $('#tyden').innerHTML=h;
+  let g=`<h2>Dalších 14 dní</h2><div class="mut" style="margin:4px 0 6px">${esc(o.jmeno)}</div><div class="mrizka">${r14.map((s,i)=>bun(s,t0+i,up(t0+i))).join('')}</div>`;
+  r14.forEach((s,i)=>up(t0+i).forEach(x=>g+=`<div class="up ${x.uroven}">${dm(t0+i)}: ${esc(x.text)}</div>`));
+  g+=`<div class="card" style="margin-top:12px"><b>Cyklus</b><div>${hc.smeny} ${plur(hc.smeny)}, ${cislo(hc.hodiny)} h</div><div class="mut">od ${dm(zacatekOsoby(os))}, 14 dní</div></div>`;
+  $('#dny14').innerHTML=g;
+  renderNast();
+}
+function renderNast(){
+  const N=S.nastaveni,hc=hodiny_cyklus(S.ui.osoba),opt=(v,t,c)=>`<option value="${v}"${c==v?' selected':''}>${t}</option>`;
+  let h=`<h2>Nastavení</h2><div class="card"><h3 style="margin-top:0">Cyklus</h3><label>Datum začátku cyklu</label><input type="date" data-a="start" value="${esc(N.datum_zacatku_cyklu)}">
+<label>Vzor (14 dní, klepnutím měníš V / D / N)</label><div class="vzor">${N.vzor.map((k,i)=>`<button data-a="cell" data-i="${i}" style="${k==='V'?'':'color:'+barvaSmeny(k)+';border-color:'+barvaSmeny(k)}"><small>${i+1}</small>${k}</button>`).join('')}</div>
+<p class="mut">Cyklus: ${hc.smeny} ${plur(hc.smeny)}, ${cislo(hc.hodiny)} h</p>
+<p class="mut">Pravidla: pauza ${N.pravidla.pauza_h} h, max ${N.pravidla.max_hodin_cyklus} h za cyklus, max ${N.pravidla.max_nocnich_po_sobe} noční po sobě, souvislé volno min ${N.pravidla.min_souvisle_volno_h} h.</p></div>`;
+  h+=`<div class="card"><h3 style="margin-top:0">Směny</h3>`+['D','N'].map(k=>{const s=N.smeny[k];return `<div style="margin-bottom:12px"><b>${k}</b><div class="row"><div><label>Název</label><input data-a="sm" data-k="${k}" data-f="nazev" value="${esc(s.nazev)}"></div><div style="max-width:80px"><label>Barva</label><input type="color" data-a="sm" data-k="${k}" data-f="barva" value="${esc(s.barva)}"></div></div><div class="row"><div><label>Od</label><input type="time" data-a="sm" data-k="${k}" data-f="od" value="${esc(s.od)}"></div><div><label>Do</label><input type="time" data-a="sm" data-k="${k}" data-f="do" value="${esc(s.do)}"></div></div></div>`}).join('')+`</div>`;
+  h+=`<div class="card"><h3 style="margin-top:0">Lidé</h3>`+S.lide.map((l,i)=>`<div style="margin-bottom:14px"><div class="row"><div><label>Jméno</label><input data-a="os" data-i="${i}" data-f="jmeno" value="${esc(l.jmeno)}"></div><div style="max-width:80px"><label>Barva</label><input type="color" data-a="os" data-i="${i}" data-f="barva" value="${esc(l.barva)}"></div></div><div class="row"><div><label>Role (nepovinné)</label><input data-a="os" data-i="${i}" data-f="role" value="${esc(l.role||'')}"></div><div><label>Posun (dny)</label><input type="number" step="1" data-a="os" data-i="${i}" data-f="posun_dnu" value="${+l.posun_dnu||0}"></div></div>${S.lide.length>1?`<button class="btn d" style="margin-top:8px" data-a="osdel" data-i="${i}">Odebrat</button>`:''}</div>`).join('')+`<button class="btn" data-a="osadd">Přidat osobu</button><p class="mut">Režim: Já a rodina</p></div>`;
+  h+=`<div class="card"><h3 style="margin-top:0">Vzhled</h3><label>Režim zobrazení</label><select data-a="tema">${opt('auto','Podle zařízení',S.ui.tema)}${opt('light','Světlý',S.ui.tema)}${opt('dark','Tmavý',S.ui.tema)}</select><label>Týden začíná</label><select data-a="zt">${opt(1,'v pondělí',S.ui.zacatek_tydne)}${opt(0,'v neděli',S.ui.zacatek_tydne)}</select></div>`;
+  h+=`<div class="card"><h3 style="margin-top:0">Data a záloha</h3><label style="display:flex;gap:10px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:24px;min-height:24px" data-a="ulozit"${S.ui.ulozit?' checked':''}> Ukládat na tomto zařízení</label><p class="mut">Data zůstávají jen v tomto prohlížeči. Pokud ukládání nefunguje (např. v náhledu), použij zálohu.</p><div class="row"><button class="btn p" data-a="export">Exportovat JSON</button><button class="btn" data-a="import">Importovat JSON</button></div><label>Záloha (JSON)</label><textarea id="zaloha" spellcheck="false"></textarea><div class="mut" id="zprava"></div><button class="btn d" style="margin-top:10px" data-a="reset">Obnovit výchozí</button></div>`;
+  $('#nast').innerHTML=h;
+}
+/* ---------- ruční úprava ---------- */
+let edit=null;
+function otevri(datum){
+  const os=S.ui.osoba,s=rozpisUI(os,pd(datum),pd(datum))[0],z=S.zasahy.find(x=>x.datum===datum&&x.osoba_id===os);
+  edit={datum,os,kod:s?s.kod:'V'};
+  const o=S.lide.find(l=>l.id===os);
+  $('#sheet').innerHTML=`<h2>${dnyN(pd(datum))} ${dm(pd(datum))}</h2><div class="mut">${esc(o.jmeno)}</div><div class="volba">${['V','D','N'].map(k=>`<button data-k="${k}" class="${k===edit.kod?'on':''}">${k}<small>${esc(nazevSmeny(k))}</small></button>`).join('')}</div><label>Poznámka (výměna, dovolená…)</label><textarea id="pozn">${esc(z?z.poznamka:'')}</textarea><div class="row" style="margin-top:12px"><button class="btn p" id="ulozZ">Uložit</button><button class="btn" id="zrusO">Zavřít</button></div>${z?'<button class="btn d" style="margin-top:8px;width:100%" id="smazZ">Vrátit podle vzoru</button>':''}`;
+  $('#ov').classList.add('on');$('#sheet .volba button.on').focus();
+}
+const zavri=()=>$('#ov').classList.remove('on');
+$('#ov').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.id==='ov'||t.id==='zrusO')return zavri();
+  const b=t.closest('.volba button');
+  if(b){edit.kod=b.dataset.k;document.querySelectorAll('.volba button').forEach(x=>x.classList.toggle('on',x===b));return}
+  if(t.id==='ulozZ'){S.zasahy=S.zasahy.filter(x=>!(x.datum===edit.datum&&x.osoba_id===edit.os));S.zasahy.push({datum:edit.datum,osoba_id:edit.os,smena:edit.kod,poznamka:$('#pozn').value.trim()});zavri();uloz();render()}
+  if(t.id==='smazZ'){S.zasahy=S.zasahy.filter(x=>!(x.datum===edit.datum&&x.osoba_id===edit.os));zavri();uloz();render()}
+});
+/* ---------- události ---------- */
+document.querySelector('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.ui.tab=b.dataset.t;uloz();render();scrollTo(0,0)}});
+$('#prehled').addEventListener('click',e=>{
+  const t=e.target.closest('[data-d],[data-w],[data-os]');
+  if(!t||t.closest('#nast'))return;
+  e.preventDefault();
+  if(t.dataset.d)return otevri(t.dataset.d);
+  if(t.dataset.w!==undefined){S.ui.tyden=t.dataset.w==='0'?0:S.ui.tyden+ +t.dataset.w;render()}
+  if(t.dataset.os){S.ui.osoba=t.dataset.os;uloz();render()}
+});
+function jeVse(o){return o&&o.nastaveni&&Array.isArray(o.nastaveni.vzor)&&o.nastaveni.vzor.length===14&&o.nastaveni.vzor.every(k=>'VDN'.includes(k))&&o.nastaveni.smeny&&o.nastaveni.smeny.D&&o.nastaveni.smeny.N&&Array.isArray(o.lide)&&o.lide.length&&/^\d{4}-\d\d-\d\d$/.test(o.nastaveni.datum_zacatku_cyklu)}
+function zprava(t){const z=$('#zprava');if(z)z.textContent=t}
+$('#nast').addEventListener('click',e=>{
+  const t=e.target.closest('button[data-a]');if(!t)return;const a=t.dataset.a,i=+t.dataset.i;
+  if(a==='cell'){const v=S.nastaveni.vzor;v[i]={V:'D',D:'N',N:'V'}[v[i]]}
+  else if(a==='osadd'){S.lide.push({id:'o'+Date.now().toString(36),jmeno:'Nová osoba',role:'',barva:'#be185d',posun_dnu:0})}
+  else if(a==='osdel'){const l=S.lide[i];if(!confirm('Odebrat osobu '+l.jmeno+' včetně jejích úprav?'))return;S.lide.splice(i,1);S.zasahy=S.zasahy.filter(z=>z.osoba_id!==l.id);if(S.ui.osoba===l.id)S.ui.osoba=S.lide[0].id}
+  else if(a==='export'){const j=JSON.stringify(data(),null,1);$('#zaloha').value=j;try{navigator.clipboard.writeText(j).then(()=>zprava('Zkopírováno do schránky.'),()=>zprava('Zkopíruj text ručně.'))}catch(x){zprava('Zkopíruj text ručně.')}return}
+  else if(a==='import'){try{const o=JSON.parse($('#zaloha').value);if(!jeVse(o))throw 0;S.nastaveni=o.nastaveni;S.lide=o.lide;S.zasahy=Array.isArray(o.zasahy)?o.zasahy:[];if(!S.lide.some(l=>l.id===S.ui.osoba))S.ui.osoba=S.lide[0].id}catch(x){return zprava('Neplatná záloha. Vlož JSON z exportu.')}}
+  else if(a==='reset'){if(!confirm('Smazat všechna data a obnovit výchozí?'))return;const u=S.ui;S=vychozi();S.ui.tema=u.tema}
+  else return;
+  uloz();render();
+});
+$('#nast').addEventListener('change',e=>{
+  const t=e.target,a=t.dataset.a;if(!a)return;
+  if(a==='start'&&t.value)S.nastaveni.datum_zacatku_cyklu=t.value;
+  else if(a==='sm'&&t.value)S.nastaveni.smeny[t.dataset.k][t.dataset.f]=t.value;
+  else if(a==='os'){const l=S.lide[+t.dataset.i],f=t.dataset.f;l[f]=f==='posun_dnu'?Math.trunc(+t.value||0):t.value;if(f==='jmeno'&&!l.jmeno.trim())l.jmeno='Bez jména'}
+  else if(a==='tema')S.ui.tema=t.value;
+  else if(a==='zt')S.ui.zacatek_tydne=+t.value;
+  else if(a==='ulozit'){S.ui.ulozit=t.checked;if(!t.checked)try{localStorage.removeItem(KEY)}catch(x){}}
+  uloz();render();
+});
+addEventListener('keydown',e=>{
+  const ov=$('#ov').classList.contains('on');
+  if(e.key==='Escape'&&ov)return zavri();
+  if(ov||S.ui.tab==='nast'||e.target.matches('input,textarea,select'))return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){S.ui.tyden+=e.key==='ArrowLeft'?-1:1;render()}
+});
+nacti();render();
+</script>
+</body>
+</html>
