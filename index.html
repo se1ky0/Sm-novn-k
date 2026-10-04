@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Směnovník</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Směnovník">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
 :root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mut:#5d6b78;--line:#d5dce3;--acc:#0f766e;--v:#9aa7b3;--warn:#b45309;--warnbg:#fef3c7;--err:#b91c1c;--errbg:#fee2e2;--kon:#6d28d9;--konbg:#ede9fe;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e151b;--card:#18222b;--ink:#e8eef3;--mut:#9aa9b6;--line:#2b3946;--acc:#2dd4bf;--warn:#fcd34d;--warnbg:#3b2f0b;--err:#fca5a5;--errbg:#451a1a;--kon:#c4b5fd;--konbg:#2e2150}}
@@ -411,7 +418,7 @@ const vychozi=()=>({
 });
 let S=vychozi();
 const data=()=>({nastaveni:S.nastaveni,lide:S.lide,zasahy:S.zasahy});
-function nacti(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.nastaveni&&o.lide){S=Object.assign(vychozi(),o);S.ui=Object.assign(vychozi().ui,o.ui)}}}catch(e){}}
+function nacti(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.nastaveni&&o.lide){S=Object.assign(vychozi(),o);S.ui=Object.assign(vychozi().ui,o.ui);S.ui.tyden=0;S.ui.tab='tyden'}}}catch(e){}}
 function uloz(){if(!S.ui.ulozit)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- adaptér UI ↔ Smenovnik (jen převody, žádné výpočty) ---------- */
@@ -462,7 +469,9 @@ function render(){
   const up=n=>upozorneni(n,ko,kf),rw=rozpisUI(os,ws,ws+6),r14=rozpisUI(os,t0,t0+13),ht=hodiny_tyden(os,ws),hc=hodiny_cyklus(os);
   const o=S.lide.find(l=>l.id===os)||S.lide[0],nx=rozpisUI(os,t0,t0+28).find(s=>s&&s.kod!=='V');
   const chips=S.lide.length>1?`<div class="chips">${S.lide.map(l=>`<button class="chip${l.id===os?' on':''}" style="--c:${esc(l.barva)}" data-os="${esc(l.id)}">${esc(l.jmeno)}</button>`).join('')}</div>`:'';
+  const zc=zacatekOsoby(os),prvni=rozpisUI(os,zc,zc+13).find(s=>s&&s.kod!=='V');
   let h=`<h2>Moje směny tento týden</h2>${chips}`;
+  if(t0<zc&&ws+6<zc)h+=`<div class="card"><b>Cyklus začíná ${dm(zc)}${prvni?`, první směna ${dm(pd(prvni.datum))}`:''}</b></div>`;
   h+=nx?`<div class="dalsi" style="--bc:${barvaSmeny(nx.kod)}"><span class="mut">Další směna</span><div class="sm"><span class="kod">${nx.kod}</span><span class="tm">${esc(nazevSmeny(nx.kod))}</span></div><div>${dnyN(pd(nx.datum))} ${dm(pd(nx.datum))}, ${esc(nx.od)}–${esc(nx.do)}${nx.presahne?' (+1 den)':''}</div></div>`:`<div class="dalsi"><span class="mut">Další směna</span><div>V nejbližších 4 týdnech žádná.</div></div>`;
   h+=`<div class="nav"><button data-w="-1" aria-label="Předchozí týden">‹</button><div class="t"><b>${ht.smeny} ${plur(ht.smeny)}, ${cislo(ht.hodiny)} h</b><small>${dm(ws)} – ${dm(ws+6)}${S.ui.tyden?' · <a href="#" data-w="0">dnes</a>':''}</small></div><button data-w="1" aria-label="Další týden">›</button></div>`;
   h+=`<div class="pas">${rw.map((s,i)=>bun(s,ws+i,up(ws+i))).join('')}</div>`;
@@ -544,6 +553,8 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'||e.key==='ArrowRight'){S.ui.tyden+=e.key==='ArrowLeft'?-1:1;render()}
 });
 nacti();render();
+/* offline režim: bez service workeru (např. při otevření ze souboru) appka funguje dál */
+try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{try{navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}})}catch(e){}
 </script>
 </body>
 </html>
