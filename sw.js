@@ -2,8 +2,8 @@
  * Stránka se načítá nejdřív ze sítě (nová verze je vidět hned), offline z cache.
  * Ostatní vlastní soubory z cache a na pozadí se obnoví (příště už nové).
  * Knihovny Firebase mají verzi v adrese, takže se jen jednou stáhnou a drží v cache.
- * Při větší změně zvyš VERZE (např. smenovnik-v5), staré cache se pak smažou. */
-const VERZE = 'smenovnik-v4';
+ * Při větší změně zvyš VERZE (např. smenovnik-v6), staré cache se pak smažou. */
+const VERZE = 'smenovnik-v5';
 const SOUBORY = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'firebase-config.js'];
 const FIREBASE = 'https://www.gstatic.com/firebasejs/';
 
@@ -38,4 +38,24 @@ self.addEventListener('fetch', e => {
   const sit = fetch(r).then(uloz);
   e.waitUntil(sit.catch(() => {}));
   e.respondWith(caches.match(r, { ignoreSearch: true }).then(hit => hit || sit).catch(() => Response.error()));
+});
+
+/* Notifikace z týmu (posílá je server push/worker.js) – ukážou se i při zavřené aplikaci. */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Směnovník', {
+    body: d.body || '', tag: d.tag || undefined, renotify: !!d.tag, icon: 'icon-192.png', lang: 'cs',
+    data: { url: d.url || './' }
+  }));
+});
+/* klepnutí na notifikaci: otevřít aplikaci (nebo přepnout do už otevřené) na správném místě */
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(okna => {
+    const okno = okna.find(o => o.url.startsWith(self.registration.scope));
+    if (okno) { okno.postMessage({ otevri: url }); return okno.focus(); }
+    return self.clients.openWindow(url);
+  }));
 });
