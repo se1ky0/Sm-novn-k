@@ -1,5 +1,11 @@
 /* Směnovník – připojení k Firebase pro sdílení směn v týmu.
- * Sem patří firebaseConfig z Firebase konzole (Nastavení projektu → Vaše aplikace → Web).
- * Tyto údaje nejsou tajné, data chrání pravidla ve firestore.rules.
- * Dokud je tu null, jde konfiguraci vložit i přímo v aplikaci (záložka Tým). */
-window.SMENOVNIK_FIREBASE = null;
+ * firebaseConfig z Firebase konzole (Nastavení projektu → Vaše aplikace → Web).
+ * Tyto údaje nejsou tajné, data chrání pravidla ve firestore.rules. */
+window.SMENOVNIK_FIREBASE = {
+  apiKey: "AIzaSyC2fmQFBPItE1B6QrMgVlEaEEZlCgPqgsY",
+  authDomain: "smenovnik-eb4e1.firebaseapp.com",
+  projectId: "smenovnik-eb4e1",
+  storageBucket: "smenovnik-eb4e1.firebasestorage.app",
+  messagingSenderId: "400572728741",
+  appId: "1:400572728741:web:c892a1b07e04167f3cd44c"
+};
