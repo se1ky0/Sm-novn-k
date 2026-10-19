@@ -46,8 +46,26 @@ Pak v aplikaci: **Tým** → napiš své jméno → **Založit tým** → **Pozv
 - Pravidla ve `firestore.rules` hlídají, že akce zadávají a mažou jen mistři a každý mění jen svůj záznam. Po změně pravidel je nahraj znovu (Firestore → Rules → Publish, nebo `firebase deploy --only firestore:rules`).
 
 - Kdo zná kód týmu, vidí jeho směny a akce. Každý může měnit jen svůj vlastní záznam; seznam týmů nejde vypsat.
-- Upozornění na změny kolegů se ukazují v aplikaci (odznak na záložce Tým a hlášení), ne jako notifikace při zavřené aplikaci.
+- Upozornění na změny kolegů se ukazují v aplikaci (odznak na záložce Tým a hlášení) a po zapnutí i jako notifikace na zavřený telefon (viz níže).
 - Bezplatný tarif Firebase (Spark) na tým bohatě stačí.
+
+## Notifikace na zavřený telefon (Cloudflare, zdarma)
+
+Notifikace o nových a zrušených akcích, odpovědích a změnách směn posílá malý server v [`push/worker.js`](push/worker.js) (Cloudflare Worker, Web Push).
+
+- Aplikace serveru po změně pošle jen *co* se změnilo (např. „akce X“). Server si podrobnosti přečte z Firestore s přihlášením odesílatele (platí stejná pravidla jako v aplikaci), sám složí text a pošle ho jen členům týmu.
+- Telefony přihlášené k notifikacím drží server v Cloudflare KV. Notifikace jsou šifrované (RFC 8291) a podepsané klíčem VAPID.
+- V aplikaci: **Tým → Notifikace na telefon → Zapnout notifikace**, pak **Zkušební**. Na iPhonu jen po přidání na plochu (iOS 16.4+). V Brave může být potřeba zapnout *Používat služby Google pro push zprávy*.
+
+Nasazení (ve složce `push`, s API tokenem Cloudflare v `CLOUDFLARE_API_TOKEN`):
+
+```sh
+npx wrangler kv namespace create SUBS      # id doplnit do wrangler.toml
+npx wrangler secret put VAPID_PRIVATE      # soukromý klíč VAPID (JWK)
+npx wrangler deploy
+```
+
+Adresu serveru a veřejný klíč VAPID obsahuje `firebase-config.js` (`window.SMENOVNIK_PUSH`).
 
 ## Nová verze
 

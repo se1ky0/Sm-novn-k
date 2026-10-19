@@ -669,7 +669,8 @@ const vychozi=()=>({
   zasahy:[],
   akce:[],     /* vlastní akce: {id, osoba_id, datum, typ, nazev, od, do, misto, popis} */
   odpovedi:{}, /* moje odpovědi na akce týmu: {idAkce: {stav, poznamka, cas}} */
-  tym:null,  /* {kod, nazev, poznamky, videno, posledni} */
+  tym:null,
+  push:null,   /* notifikace na tomto telefonu: {endpoint, smeny} */  /* {kod, nazev, poznamky, videno, posledni} */
   fb:null,   /* firebaseConfig vložený v aplikaci (když není ve firebase-config.js) */
   ui:{rezim:'rodina',tema:'auto',zacatek_tydne:1,ulozit:true,osoba:'ja',tyden:0,mesic:0,tab:'tyden'}
 });
@@ -853,6 +854,7 @@ function renderTym(){
   h+=`<div class="card"><h3>${ic('bell')}Poslední změny</h3>`;
   h+=zm.length?`<div class="feed">${zm.map(({c,z},i)=>{const n=pd(z.datum);let p=null;try{p=Smenovnik.smena_pro_den(z.datum,c.nastaveni,c.posun_dnu,[])}catch(e){}return `<div class="fi${z.zmeneno>vid?' nove':''}" style="--i:${i}">${avatar(c)}<div><div class="ft"><b>${esc(c.jmeno)}</b> · ${dnyN(n).toLowerCase()} ${dm(n)}</div><div>${p&&p!==z.smena?mini(p)+' → ':''}${mini(z.smena)} ${esc(nazevSmeny(z.smena))}${z.od?` ${esc(z.od)}–${esc(z.do)}`:''}${z.poznamka?` · ${esc(z.poznamka)}`:''}</div><div class="fm">${pred(z.zmeneno)}</div></div></div>`}).join('')}</div>`:`<div class="prazdne">Za posledních 14 dní nikdo nic neměnil.</div>`;
   h+=`</div>`;
+  h+=pushKarta();
   h+=`<div class="card"><h3>${ic('users')}Členové<span class="cnt">${lide.length}</span></h3>${lide.map(o=>{const uid=uidOsoby(o.id),m=jeMistr(uid);return `<div class="mrow">${avatar(o)}<span class="nm"><b>${o===ja?'Ty':esc(o.jmeno)}</b>${m?' <span class="tag m">mistr</span>':''}</span>${jsemMistr()&&o!==ja&&uid?`<button class="link" data-a="mistr" data-uid="${esc(uid)}" data-on="${m?0:1}">${m?'Odebrat mistra':'Udělat mistrem'}</button>`:''}</div>`}).join('')}</div>`;
   h+=`<div class="card"><h3>${ic('users')}Sdílení</h3><p class="hint">Kolegové vidí tvůj rozpis (osoba „${esc(ja.jmeno)}“) i tvoje úpravy. Rodina a další lidé z Nastavení zůstávají jen u tebe.</p><label class="tgl"><span>Sdílet i poznámky</span><input type="checkbox" data-a="pozn"${S.tym.poznamky!==false?' checked':''}></label><button class="btn d g w" style="margin-top:8px" data-a="opustit">${ic('out')}Opustit tým</button></div>`;
   $('#tym').innerHTML=h;
@@ -919,7 +921,7 @@ function fbInit(){
     if(EMU){try{U.connectAuthEmulator(au,'http://127.0.0.1:9099',{disableWarnings:true})}catch(e){}try{F.connectFirestoreEmulator(db,'127.0.0.1',8080)}catch(e){}}
     await au.authStateReady();
     const u=au.currentUser||(await U.signInAnonymously(au)).user;
-    Object.assign(SY,{uid:u.uid,F,db});
+    Object.assign(SY,{uid:u.uid,F,db,au});
     return SY;
   })();
   SY.start.catch(e=>{SY.start=null;nastavStav(navigator.onLine===false?'offline':'chyba',hlaska(e))});
@@ -975,7 +977,7 @@ function prijmiAkce(m){
     oznam(zpr);
   }
   SY.melAkce=true;T.akce=m;
-  ulozCache();render(true);
+  ulozCache();render(true);otevriCekajici();
   if(SH&&SH.v==='detail'&&!m[SH.id]){toast('Akce byla zrušena');zpet()}
 }
 function prijmiTym(x){
@@ -1023,8 +1025,9 @@ function naplanujPublikaci(){if(S.tym&&SY.uid){clearTimeout(pubT);pubT=setTimeou
 async function publikuj(){
   if(!S.tym||!SY.uid)return;
   const p=profil(),j=JSON.stringify(p),kod=S.tym.kod;
+  const cekajici=[...fronta.values()];fronta.clear();
   if(j===S.tym.posledni)return;
-  try{await SY.F.setDoc(SY.F.doc(SY.db,'tymy',kod,'clenove',SY.uid),Object.assign({},p,{upraveno:Date.now()}));if(S.tym&&S.tym.kod===kod){S.tym.posledni=j;uloz()}}
+  try{await SY.F.setDoc(SY.F.doc(SY.db,'tymy',kod,'clenove',SY.uid),Object.assign({},p,{upraveno:Date.now()}));if(S.tym&&S.tym.kod===kod){S.tym.posledni=j;uloz()}cekajici.forEach(notifikuj)}
   catch(e){nastavStav('chyba',hlaska(e))}
 }
 /* zápisy mistra: akce a role (offline se zapíší po připojení) */
@@ -1033,9 +1036,58 @@ async function zapisTym(fn){
   try{const{F,db}=await fbInit();fn(F,db,S.tym.kod).catch(e=>toast(hlaska(e)));return true}
   catch(e){toast(hlaska(e));return false}
 }
-const ulozAkciTym=(id,a)=>zapisTym((F,db,kod)=>F.setDoc(F.doc(db,'tymy',kod,'akce',id),Object.assign({},a,{autor:SY.uid,upraveno:Date.now()})));
-const smazAkciTym=id=>zapisTym((F,db,kod)=>F.deleteDoc(F.doc(db,'tymy',kod,'akce',id)));
+const ulozAkciTym=(id,a,zmena)=>zapisTym((F,db,kod)=>F.setDoc(F.doc(db,'tymy',kod,'akce',id),Object.assign({},a,{autor:SY.uid,upraveno:Date.now()})).then(()=>notifikuj({typ:'akce',id,zmena:!!zmena})));
+const smazAkciTym=id=>{const a=T.akce[id];return zapisTym((F,db,kod)=>F.deleteDoc(F.doc(db,'tymy',kod,'akce',id)).then(()=>a&&notifikuj({typ:'zruseno',id,typAkce:a.typ,nazev:a.nazev,datum:a.datum,od:a.od,pro:a.pro})))};
 const nastavMistry=m=>zapisTym((F,db,kod)=>F.updateDoc(F.doc(db,'tymy',kod),{mistri:m}));
+/* ---------- notifikace na zavřený telefon (Web Push přes server push/worker.js) ---------- */
+const PUSH=window.SMENOVNIK_PUSH&&window.SMENOVNIK_PUSH.url?window.SMENOVNIK_PUSH:null;
+const iOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const naPlose=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const zB64u=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+function pushStav(){
+  if(!PUSH)return'nic';
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))return iOS&&!naPlose()?'ios':'neumi';
+  if(Notification.permission==='denied')return'zakazano';
+  return S.push&&Notification.permission==='granted'?'zapnuto':'vypnuto';
+}
+async function pushApi(cesta,data){
+  await fbInit();
+  const t=await SY.au.currentUser.getIdToken();
+  const r=await fetch(PUSH.url+cesta,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(Object.assign({kod:S.tym.kod},data))});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.chyba||'Server notifikací neodpovídá');
+  return j;
+}
+async function zapniPush(){
+  const p=await Notification.requestPermission();
+  if(p!=='granted'){render(true);throw new Error(p==='denied'?'Notifikace jsou v prohlížeči zakázané':'Notifikace nebyly povoleny')}
+  const reg=await navigator.serviceWorker.ready;
+  const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:zB64u(PUSH.vapid)});
+  const smeny=S.push?S.push.smeny!==false:true;
+  await pushApi('/subscribe',{sub:sub.toJSON(),smeny});
+  S.push={endpoint:sub.endpoint,smeny};uloz();render(true);toast('🔔 Notifikace zapnuté');
+}
+async function vypniPush(){
+  const sub=await(await navigator.serviceWorker.ready).pushManager.getSubscription();
+  if(S.push)await pushApi('/unsubscribe',{endpoint:S.push.endpoint}).catch(()=>{});
+  if(sub)await sub.unsubscribe().catch(()=>{});
+  S.push=null;uloz();render(true);toast('Notifikace vypnuté');
+}
+/* po zápisu do týmu dát vědět serveru notifikací – posílá se jen „co“, text si server složí sám */
+function notifikuj(data){if(PUSH&&S.tym)pushApi('/notify',data).catch(()=>{})}
+/* odpovědi a změny směn čekají, až se uloží profil (server si je čte z databáze) */
+const fronta=new Map();
+function poPublikaci(klic,data){if(PUSH&&S.tym)fronta.set(klic,data)}
+function pushKarta(){
+  const st=pushStav();if(st==='nic')return'';
+  let h=`<div class="card"><h3>${ic('bell')}Notifikace na telefon</h3>`;
+  if(st==='ios')h+=`<p class="hint">Na iPhonu nejdřív přidej Směnovník na plochu (Sdílet → Přidat na plochu) a otevři ho odtamtud. Pak tu notifikace zapneš.</p>`;
+  else if(st==='neumi')h+=`<p class="hint">Tenhle prohlížeč notifikace neumí. Zkus Chrome.</p>`;
+  else if(st==='zakazano')h+=`<p class="hint">Notifikace jsou pro Směnovník zakázané v nastavení prohlížeče nebo telefonu. Povol je tam a vrať se sem.</p>`;
+  else if(st==='vypnuto')h+=`<p class="hint">Upozornění na nové akce${jsemMistr()?', odpovědi kolegů':''} a změny směn ti přijdou, i když máš aplikaci zavřenou.</p><button class="btn p w" style="margin-top:12px" data-a="pushon">${ic('bell')}Zapnout notifikace</button>`;
+  else h+=`<p class="hint" style="color:var(--acc);font-weight:700">✓ Zapnuto na tomhle telefonu</p><label class="tgl"><span>Změny směn kolegů</span><input type="checkbox" data-a="pushsm"${S.push.smeny!==false?' checked':''}></label><div class="row" style="margin-top:12px"><button class="btn" data-a="pushtest">Zkušební</button><button class="btn d" data-a="pushoff">Vypnout</button></div><p class="hint">Nové a zrušené akce${jsemMistr()?' a odpovědi na tvoje akce':''} chodí vždy.${navigator.brave?' Když zkušební notifikace nepřijde, zapni v Brave Nastavení → Soukromí „Používat služby Google pro push zprávy“, nebo otevři aplikaci v Chrome.':''}</p>`;
+  return h+`</div>`;
+}
 const ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',BARVY=['#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c','#db2777'];
 function novyKod(){const a=new Uint8Array(8);crypto.getRandomValues(a);return Array.from(a,x=>ABC[x&31]).join('')}
 const normKod=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -1055,6 +1107,7 @@ async function vstupDoTymu(kod,nazev,jmeno,novy){
   if(novy)T.mistri=[uid];
   SY.videnoPri=Date.now();
   uloz();await pripojTym();
+  if(S.push)zapniPush().catch(()=>{S.push=null;uloz()});
 }
 function opustTym(){
   const u=mojeUid();
@@ -1064,6 +1117,7 @@ function opustTym(){
     if(jsemMistr()&&T.mistri.length>1)nastavMistry(T.mistri.filter(x=>x!==u));
     SY.F.deleteDoc(SY.F.doc(SY.db,'tymy',S.tym.kod,'clenove',SY.uid)).catch(()=>{});
   }
+  if(S.push)pushApi('/unsubscribe',{endpoint:S.push.endpoint}).catch(()=>{});
   odpojTym();S.tym=null;S.odpovedi={};nastavStav('vypnuto');
   uloz();render();toast('Tým jsi opustil(a)');
 }
@@ -1075,7 +1129,8 @@ async function sdilej(){
 }
 /* pozvánka v adrese: ?tym=KOD (&fb=nastavení Firebase, když není ve firebase-config.js) */
 function zAdresy(){
-  const p=new URLSearchParams(location.search);if(!p.has('tym')&&!p.has('fb'))return;
+  const p=new URLSearchParams(location.search);if(!p.has('tym')&&!p.has('fb')&&!p.has('akce')&&!p.has('tab'))return;
+  zParametru(p);
   const fb=p.get('fb');
   if(fb&&!window.SMENOVNIK_FIREBASE){try{const c=vyberCfg(JSON.parse(decodeURIComponent(escape(atob(fb)))));if(c)S.fb=c}catch(e){}}
   const k=normKod(p.get('tym'));
@@ -1083,6 +1138,13 @@ function zAdresy(){
   try{history.replaceState(null,'',location.pathname)}catch(e){}
   uloz();
 }
+/* ?akce=ID otevře akci, ?tab=… záložku (odkazy z notifikací) */
+function zParametru(p){
+  const tab=p.get('tab'),ak=p.get('akce');
+  if(['tyden','kal','tym','nast'].includes(tab))S.ui.tab=tab;
+  if(ak&&ID.test(ak)){S.ui.tab='tym';SY.otevrit=ak}
+}
+function otevriCekajici(){if(SY.otevrit&&T.akce[SY.otevrit]){const id=SY.otevrit;SY.otevrit=null;zavri();detailAkce(id)}}
 function nactiTymCache(){try{
   const c=JSON.parse(localStorage.getItem(TKEY)||'null');if(!c||!S.tym||c.kod!==S.tym.kod)return;
   if(c.clenove){const m={};Object.values(c.clenove).forEach(x=>{const v=prijmi(String(x.id).slice(2),x);if(v)m[v.id]=v});T.clenove=m;SY.posl=JSON.stringify(m)}
@@ -1151,6 +1213,7 @@ function ulozDen(){
   let cas=def&&d.cas&&!(d.cas.od===def.od&&d.cas.do===def.do)?d.cas:null;
   const ost=S.zasahy.filter(z=>!(z.datum===datum&&z.osoba_id===os));
   S.zasahy=d.kod===d.vz&&!pozn&&!cas?ost:ost.concat(Object.assign({datum,osoba_id:os,smena:d.kod,poznamka:pozn,zmeneno:Date.now()},cas||{}));
+  if(S.tym&&os===S.lide[0].id)poPublikaci('sm:'+datum,{typ:'smena',datum});
   toast(S.tym&&os===S.lide[0].id?'Uloženo · tým uvidí změnu':'Uloženo');
   zavri();uloz();render(true);
 }
@@ -1198,7 +1261,7 @@ async function ulozAkci(){
   if(f.do&&!f.od)return toast('Doplň i začátek');
   const a={datum:f.datum,typ:f.typ,nazev:f.nazev.trim().slice(0,60),od:f.od,do:f.do,misto:f.misto.trim().slice(0,60),popis:f.popis.trim().slice(0,300)};
   if(f.tym){
-    if(!(await ulozAkciTym(SH.tymId||novyId(),Object.assign(a,{pro:f.pro}))))return;
+    if(!(await ulozAkciTym(SH.tymId||novyId(),Object.assign(a,{pro:f.pro}),!!SH.tymId)))return;
     toast(SH.tymId?'Akce upravena · tým uvidí změnu':'📅 Akce poslána týmu');
   }else{
     const id=SH.id||novyId();
@@ -1247,6 +1310,7 @@ function odpovez(){
   const st=SH.rs||(ma(S.odpovedi,SH.id)&&S.odpovedi[SH.id].stav);
   if(!st)return toast('Vyber, jestli přijdeš');
   S.odpovedi[SH.id]={stav:st,poznamka:$('#r-pozn').value.trim().slice(0,200),cas:Date.now()};
+  poPublikaci('odp:'+SH.id,{typ:'odpoved',id:SH.id});
   uloz();toast(`${ODP[st].i} Odpověď odeslána`);
   zpet();render(true);
 }
@@ -1270,7 +1334,7 @@ $('#ov').addEventListener('click',e=>{
     case 'zpet':return zpet();
     case 'cas':ctiDen();SH.d.upravit=true;$('#casbox').innerHTML=casBox(SH.d);return $('#s-od').focus();
     case 'save':return ulozDen();
-    case 'reset':S.zasahy=S.zasahy.filter(z=>!(z.datum===SH.datum&&z.osoba_id===SH.os));toast('Vráceno podle vzoru');zavri();uloz();return render(true);
+    case 'reset':S.zasahy=S.zasahy.filter(z=>!(z.datum===SH.datum&&z.osoba_id===SH.os));if(S.tym&&SH.os===S.lide[0].id)poPublikaci('sm:'+SH.datum,{typ:'smena',datum:SH.datum});toast('Vráceno podle vzoru');zavri();uloz();return render(true);
     case 'kal':S.ui.osoba=SH.os;S.ui.tab='kal';anim=true;zavri();uloz();render();return scrollTo(0,0);
     case 'ulozakci':return ulozAkci();
     case 'smazat':return smazAkci(SH.tymId,SH.id);
@@ -1316,12 +1380,22 @@ $('#tym').addEventListener('click',async e=>{
     return;
   }
   if(a==='sdilet')return sdilej();
+  if(a==='pushon'||a==='pushoff'||a==='pushtest'){
+    t.disabled=true;
+    try{if(a==='pushon')await zapniPush();else if(a==='pushoff')await vypniPush();else{const j=await pushApi('/notify',{typ:'test'});toast(j.odeslano?'🔔 Zkušební notifikace odeslána':'Server tvůj telefon nenašel – vypni a zapni notifikace')}}
+    catch(err){toast(err.message||'Notifikace se nepodařilo zapnout')}
+    t.disabled=false;return;
+  }
   if(a==='nova'){SH=null;return formAkce({datum:fd(dnes()+1),os:S.lide[0].id})}
   if(a==='prevzit'){if(!confirm('Převzít správu týmu jako mistr? Budeš zadávat akce a určovat další mistry.'))return;T.mistri=T.mistri||null;if(await nastavMistry([mojeUid()]))toast('👷 Jsi mistr týmu');return}
   if(a==='mistr'){const uid=t.dataset.uid,on=t.dataset.on==='1',p=osobaUid(uid),m=(T.mistri||[]).filter(x=>x!==uid).concat(on?[uid]:[]);if(!m.length)return toast('Tým musí mít aspoň jednoho mistra');if(!on&&!confirm(`Odebrat ${p?p.jmeno:'tomuto členovi'} roli mistra?`))return;if(await nastavMistry(m))toast(on?`👷 ${p?p.jmeno:'Člen'} je teď mistr`:'Role mistra odebrána');return}
   if(a==='opustit')return opustTym();
 });
-$('#tym').addEventListener('change',e=>{if(e.target.dataset.a==='pozn'&&S.tym){S.tym.poznamky=e.target.checked;uloz()}});
+$('#tym').addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.dataset.a==='pozn'&&S.tym){S.tym.poznamky=t.checked;uloz()}
+  if(t.dataset.a==='pushsm'&&S.push){S.push.smeny=t.checked;uloz();try{const sub=await(await navigator.serviceWorker.ready).pushManager.getSubscription();if(sub)await pushApi('/subscribe',{sub:sub.toJSON(),smeny:t.checked})}catch(err){toast(err.message)}}
+});
 /* tah prstem doleva/doprava = další/předchozí týden či měsíc */
 let tx=null,ty=0;
 $('#prehled').addEventListener('touchstart',e=>{tx=e.target.closest('.swipe')?e.touches[0].clientX:null;ty=e.touches[0].clientY},{passive:true});
@@ -1388,7 +1462,8 @@ setInterval(obnov,30000);
 document.addEventListener('visibilitychange',()=>{obnov();if(!document.hidden&&S.tym&&SY.stav!=='online')pripojTym()});
 addEventListener('online',()=>{if(S.tym)pripojTym()});
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>render(true));
-nacti();zAdresy();nactiTymCache();render();
+nacti();zAdresy();nactiTymCache();render();otevriCekajici();
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const u=e.data&&e.data.otevri;if(!u)return;zParametru(new URL(u,location.href).searchParams);anim=true;render();otevriCekajici()});
 if(S.tym)pripojTym();
 /* offline režim: bez service workeru (např. při otevření ze souboru) appka funguje dál */
 try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{try{navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}})}catch(e){}
