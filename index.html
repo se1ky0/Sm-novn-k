@@ -334,10 +334,11 @@ details summary{cursor:pointer;color:var(--mut);font-weight:650;font-size:14px;m
   'use strict';
   const DEN = 86400000, HOD = 3600000;
   const NASTAVENI_VYCHOZI = {
-    datum_zacatku_cyklu: '2026-10-12',
-    vzor: ['V','V','N','N','V','V','V','D','D','V','V','N','N','N'],
+    datum_zacatku_cyklu: '2026-01-05',
+    // krátký/dlouhý týden, 12h směny, 28 dní (druhá polovina = první s prohozenou D/N)
+    vzor: ['V','V','N','N','V','V','V','D','D','V','V','N','N','N','V','V','D','D','V','V','V','N','N','V','V','D','D','D'],
     smeny: { D: { od: '06:00', do: '18:00' }, N: { od: '18:00', do: '06:00' } },
-    pravidla: { pauza_h: 11, max_hodin_cyklus: 84, max_nocnich_po_sobe: 3, min_souvisle_volno_h: 35 }
+    pravidla: { pauza_h: 11, max_hodin_cyklus: 168, max_nocnich_po_sobe: 3, min_souvisle_volno_h: 35 }
   };
   /* ---------- pomocné ---------- */
   function mod(a, n) { return ((a % n) + n) % n; }
@@ -661,10 +662,11 @@ const avatar=(o,live)=>`<span class="av" style="--c:${esc(o.barva)};--ci:${inkOn
 /* ---------- stav ---------- */
 const KEY='smenovnik_v1',TKEY='smenovnik_tym';
 const vychozi=()=>({
-  nastaveni:{datum_zacatku_cyklu:'2026-10-12',
-    vzor:["V","V","N","N","V","V","V","D","D","V","V","N","N","N"],
+  nastaveni:{datum_zacatku_cyklu:'2026-01-05',
+    /* krátký/dlouhý týden, 12h směny, 28 dní (druhá polovina = první s prohozenou D/N) */
+    vzor:["V","V","N","N","V","V","V","D","D","V","V","N","N","N","V","V","D","D","V","V","V","N","N","V","V","D","D","D"],
     smeny:{D:{nazev:'Denní',barva:'#d97706',od:'06:00',do:'18:00'},N:{nazev:'Noční',barva:'#4f46e5',od:'18:00',do:'06:00'}},
-    pravidla:{pauza_h:11,max_hodin_cyklus:84,max_nocnich_po_sobe:3,min_souvisle_volno_h:35}},
+    pravidla:{pauza_h:11,max_hodin_cyklus:168,max_nocnich_po_sobe:3,min_souvisle_volno_h:35}},
   lide:[{id:'ja',jmeno:'Já',role:'',barva:'#0f766e',posun_dnu:0}],
   zasahy:[],
   akce:[],     /* vlastní akce: {id, osoba_id, datum, typ, nazev, od, do, misto, popis} */
@@ -678,7 +680,9 @@ let S=vychozi();
 /* kolegové z týmu: {'r:<uid>': {id, jmeno, barva, role, posun_dnu, nastaveni, zasahy, upraveno}} */
 const T={clenove:{},akce:{},mistri:undefined}; /* mistri: undefined = nenačteno, null = tým bez mistra */
 const data=()=>({nastaveni:S.nastaveni,lide:S.lide,zasahy:S.zasahy,akce:S.akce});
-function nacti(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.nastaveni&&o.lide){S=Object.assign(vychozi(),o);S.ui=Object.assign(vychozi().ui,o.ui);S.ui.tyden=0;S.ui.mesic=0;S.ui.tab='tyden';if(!Array.isArray(S.akce))S.akce=[];if(!S.odpovedi||typeof S.odpovedi!=='object')S.odpovedi={}}}}catch(e){}}
+const STARY_VZOR='VVNNVVVDDVVNNN';
+function prevedVzor(){const n=S.nastaveni;if(n.datum_zacatku_cyklu==='2026-10-12'&&n.vzor.join('')===STARY_VZOR){n.vzor=vychozi().nastaveni.vzor;n.datum_zacatku_cyklu=vychozi().nastaveni.datum_zacatku_cyklu;if(n.pravidla.max_hodin_cyklus===84)n.pravidla.max_hodin_cyklus=168;return true}return false}
+function nacti(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.nastaveni&&o.lide){S=Object.assign(vychozi(),o);S.ui=Object.assign(vychozi().ui,o.ui);S.ui.tyden=0;S.ui.mesic=0;S.ui.tab='tyden';if(!Array.isArray(S.akce))S.akce=[];if(!S.odpovedi||typeof S.odpovedi!=='object')S.odpovedi={};if(prevedVzor())uloz()}}}catch(e){}}
 function uloz(){naplanujPublikaci();if(!S.ui.ulozit)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- adaptér UI ↔ Smenovnik (jen převody, žádné výpočty) ---------- */
@@ -865,6 +869,7 @@ function renderNast(){
   let h=`<h2>Nastavení</h2><div class="cols">`;
   h+=`<div class="card"><h3>${ic('rep')}Cyklus</h3><p class="hint">Klepnutím na den vzoru přepínáš Volno → ${esc(nazevSmeny('D'))} → ${esc(nazevSmeny('N'))}.</p>
 <label class="l" for="f-start">Začátek cyklu (1. den vzoru)</label><input id="f-start" type="date" data-a="start" value="${esc(N.datum_zacatku_cyklu)}">
+<label class="l">Délka cyklu</label>${seg('delka',N.vzor.length,[[7,'7 dní'],[14,'14 dní'],[21,'21 dní'],[28,'28 dní']])}
 <label class="l">Vzor (${N.vzor.length} dní)</label><div class="vzor">${N.vzor.map((k,i)=>`<button data-a="cell" data-i="${i}" class="${k==='V'?'':'s'}" style="${sv(k)}" aria-label="Den ${i+1}: ${esc(nazevSmeny(k))}"><small>${i+1}</small>${k}</button>`).join('')}</div>
 <p class="hint">${hc.smeny} ${plur(hc.smeny)} · ${cislo(hc.hodiny)} h za cyklus</p>
 <p class="hint">Kontroly: pauza min. ${N.pravidla.pauza_h} h, max. ${N.pravidla.max_hodin_cyklus} h za cyklus, max. ${N.pravidla.max_nocnich_po_sobe} noční po sobě, souvislé volno min. ${N.pravidla.min_souvisle_volno_h} h týdně.</p></div>`;
@@ -1404,7 +1409,7 @@ $('#prehled').addEventListener('touchend',e=>{
   if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
   S.ui[k]+=dx<0?1:-1;anim=true;render(true);
 },{passive:true});
-function jeVse(o){return o&&o.nastaveni&&Array.isArray(o.nastaveni.vzor)&&o.nastaveni.vzor.length===14&&o.nastaveni.vzor.every(k=>'VDN'.includes(k))&&o.nastaveni.smeny&&o.nastaveni.smeny.D&&o.nastaveni.smeny.N&&Array.isArray(o.lide)&&o.lide.length&&/^\d{4}-\d\d-\d\d$/.test(o.nastaveni.datum_zacatku_cyklu)}
+function jeVse(o){return o&&o.nastaveni&&Array.isArray(o.nastaveni.vzor)&&o.nastaveni.vzor.length>=7&&o.nastaveni.vzor.length<=56&&o.nastaveni.vzor.every(k=>'VDN'.includes(k))&&o.nastaveni.smeny&&o.nastaveni.smeny.D&&o.nastaveni.smeny.N&&Array.isArray(o.lide)&&o.lide.length&&/^\d{4}-\d\d-\d\d$/.test(o.nastaveni.datum_zacatku_cyklu)}
 function importuj(text){
   try{const o=JSON.parse(text);if(!jeVse(o))throw 0;S.nastaveni=o.nastaveni;S.lide=o.lide;S.zasahy=Array.isArray(o.zasahy)?o.zasahy:[];S.akce=Array.isArray(o.akce)?o.akce.filter(a=>a&&ID.test(a.id)&&typeof a.datum==='string'&&DAT.test(a.datum)&&(a.od===''||HM.test(a.od))&&(a.do===''||HM.test(a.do))):[];if(!osoba(S.ui.osoba))S.ui.osoba=S.lide[0].id}
   catch(x){return toast('Neplatná záloha')}
@@ -1418,6 +1423,7 @@ $('#nast').addEventListener('click',e=>{
   else if(a==='osdel'){const l=S.lide[i];if(!confirm('Odebrat osobu '+l.jmeno+' včetně jejích úprav?'))return;S.lide.splice(i,1);S.zasahy=S.zasahy.filter(z=>z.osoba_id!==l.id);S.akce=S.akce.filter(a=>a.osoba_id!==l.id);if(S.ui.osoba===l.id)S.ui.osoba=S.lide[0].id}
   else if(a==='tema')S.ui.tema=t.dataset.v;
   else if(a==='zt')S.ui.zacatek_tydne=+t.dataset.v;
+  else if(a==='delka'){const v=S.nastaveni.vzor,L=+t.dataset.v,p=S.nastaveni.pravidla;if(L===v.length)return;p.max_hodin_cyklus=Math.round(p.max_hodin_cyklus*L/v.length);S.nastaveni.vzor=Array.from({length:L},(_,i)=>v[i%v.length])}
   else if(a==='export'){
     const j=zalohaJSON();$('#zaloha').value=j;
     try{const u=URL.createObjectURL(new Blob([j],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=`smenovnik-zaloha-${fd(dnes())}.json`;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);toast('Záloha stažena')}
