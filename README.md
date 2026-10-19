@@ -5,7 +5,8 @@ Plánování směn pro mě, rodinu a tým – webová aplikace (PWA), funguje i 
 - **Týden** – karta „Teď jsi v práci / Další směna“ s odpočtem, seznam dní se směnami (D = denní, N = noční, V = volno). Tahem prstu se přepíná týden.
 - **Kalendář** – celý měsíc, počet směn a hodin, upozornění.
 - **Tým** – kdo je teď v práci, rozpis kolegů na 7 dní dopředu a jejich změny hned, jak je udělají (vyžaduje jednorázové nastavení Firebase, viz níže).
-- **Úprava dne** – klepnutím na den změníš směnu a přidáš poznámku (Dovolená, Nemoc, Výměna…).
+- **Úprava dne** – klepnutím na den změníš směnu, upravíš její čas (např. zkrácená směna) a přidáš poznámku (Dovolená, Nemoc, Výměna).
+- **Akce** – školení, porada, přesčas, lékař… s časem od–do, místem a popisem. Bez týmu jsou jen tvoje.
 - **Kontroly** – pauza mezi směnami, max. hodin za cyklus, noční po sobě, souvislé volno; u rodiny upozornění, když mají všichni stejnou směnu.
 - **Nastavení** – 14denní vzor, časy a barvy směn, lidé s posunem cyklu, světlý/tmavý vzhled, záloha do souboru.
 
@@ -36,7 +37,15 @@ Dělá se jen jednou. Kolegové pak už jen otevřou pozvánku.
 
 Pak v aplikaci: **Tým** → napiš své jméno → **Založit tým** → **Pozvat kolegy** (pošle odkaz s kódem týmu).
 
-- Kdo zná kód týmu, vidí jeho směny. Každý může měnit jen svůj vlastní záznam; seznam týmů nejde vypsat.
+### Mistr a pracovníci
+
+- Kdo tým založí, je **mistr**. Další mistry určí v **Tým → Členové → Udělat mistrem**.
+- Mistr zadává **akce pro tým** (školení, porady, přesčasy…): klepne na den → *Přidat akci*, vyplní čas, místo a popis a vybere, pro koho akce je (celý tým nebo vybraní lidé).
+- Pracovníci akci dostanou hned (hlášení, odznak, karta *Čeká na tvou odpověď*) a jen odpoví **Přijdu / Možná / Nepřijdu** s poznámkou. Mistr vidí odpovědi všech i to, jakou má kdo ten den směnu.
+- Tým založený starší verzí aplikace mistra nemá – v záložce Tým si ho jeden člověk převezme tlačítkem *Jsem mistr*.
+- Pravidla ve `firestore.rules` hlídají, že akce zadávají a mažou jen mistři a každý mění jen svůj záznam. Po změně pravidel je nahraj znovu (Firestore → Rules → Publish, nebo `firebase deploy --only firestore:rules`).
+
+- Kdo zná kód týmu, vidí jeho směny a akce. Každý může měnit jen svůj vlastní záznam; seznam týmů nejde vypsat.
 - Upozornění na změny kolegů se ukazují v aplikaci (odznak na záložce Tým a hlášení), ne jako notifikace při zavřené aplikaci.
 - Bezplatný tarif Firebase (Spark) na tým bohatě stačí.
 
