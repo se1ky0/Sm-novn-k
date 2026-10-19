@@ -110,15 +110,16 @@ async function zasifruj(zprava, sub) {
 /* vrací stav od push služby; 410 = telefon už neexistuje (i když pro něj nejde šifrovat), 0 = výpadek sítě */
 async function posli(sub, zprava, env) {
   let telo;
-  try { telo = await zasifruj(JSON.stringify(zprava), sub); } catch (e) { return 410; }
+  try { telo = await zasifruj(JSON.stringify(zprava), sub); } catch (e) { console.log('push: nejde šifrovat', e.message); return 410; }
   try {
     const r = await fetch(sub.endpoint, {
       method: 'POST',
       headers: { Authorization: await vapid(sub.endpoint, env), 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '86400', Urgency: 'high' },
       body: telo
     });
+    if (!r.ok) console.log('push:', r.status, new URL(sub.endpoint).host, (await r.text()).slice(0, 120));
     return r.status;
-  } catch (e) { return 0; }
+  } catch (e) { console.log('push: chyba', e.message); return 0; }
 }
 
 /* ---------- přihlášené telefony v KV ---------- */
@@ -134,7 +135,10 @@ async function rozesli(env, kod, komu, zprava, filtr) {
       if (st >= 200 && st < 300) n++;
       else if (st === 404 || st === 410) mrtve.push(s.endpoint);
     }
-    if (mrtve.length) await env.SUBS.put(kvKlic(kod, uid), JSON.stringify(subs.filter(s => !mrtve.includes(s.endpoint))));
+    if (mrtve.length) {
+      const zbyle = subs.filter(s => !mrtve.includes(s.endpoint));
+      if (zbyle.length) await env.SUBS.put(kvKlic(kod, uid), JSON.stringify(zbyle)); else await env.SUBS.delete(kvKlic(kod, uid));
+    }
   }));
   return n;
 }

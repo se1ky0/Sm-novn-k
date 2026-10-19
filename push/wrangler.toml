@@ -15,4 +15,4 @@ VAPID_PUBLIC = "BBzPlOwpemSPY0gOHxB7KyYG1E30X3oe4ZAGacHyPQpx_EIKT42B394kfeu63skf
 # přihlášené telefony (klíč s:{kód týmu}:{uid})
 [[kv_namespaces]]
 binding = "SUBS"
-id = "DOPLNI_SE_PO_VYTVORENI"
+id = "1695a3207f704bdab09d70ab270423b0"

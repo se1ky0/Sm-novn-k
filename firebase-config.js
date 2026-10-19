@@ -9,3 +9,9 @@ window.SMENOVNIK_FIREBASE = {
   messagingSenderId: "400572728741",
   appId: "1:400572728741:web:c892a1b07e04167f3cd44c"
 };
+
+/* Server pro notifikace na zavřený telefon (push/worker.js na Cloudflare) a jeho veřejný klíč VAPID. */
+window.SMENOVNIK_PUSH = {
+  url: "https://smenovnik-push.smenovnik.workers.dev",
+  vapid: "BBzPlOwpemSPY0gOHxB7KyYG1E30X3oe4ZAGacHyPQpx_EIKT42B394kfeu63skfK8GfnLwZLVBhZ0e6L3ZnOzA"
+};
