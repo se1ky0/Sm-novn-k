@@ -2,8 +2,8 @@
  * Stránka se načítá nejdřív ze sítě (nová verze je vidět hned), offline z cache.
  * Ostatní vlastní soubory z cache a na pozadí se obnoví (příště už nové).
  * Knihovny Firebase mají verzi v adrese, takže se jen jednou stáhnou a drží v cache.
- * Při větší změně zvyš VERZE (např. smenovnik-v6), staré cache se pak smažou. */
-const VERZE = 'smenovnik-v5';
+ * Při větší změně zvyš VERZE (např. smenovnik-v7), staré cache se pak smažou. */
+const VERZE = 'smenovnik-v6';
 const SOUBORY = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'firebase-config.js'];
 const FIREBASE = 'https://www.gstatic.com/firebasejs/';
 
