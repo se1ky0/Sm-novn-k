@@ -1,9 +1,11 @@
 /* Směnovník – service worker: offline cache.
  * Stránka se načítá nejdřív ze sítě (nová verze je vidět hned), offline z cache.
- * Ostatní soubory cache-first. Při nahrání nové verze appky zvyš číslo ve VERZE
- * (např. smenovnik-v3), nový sw.js se pak nainstaluje a při aktivaci smaže staré cache. */
-const VERZE = 'smenovnik-v2';
-const SOUBORY = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+ * Ostatní vlastní soubory z cache a na pozadí se obnoví (příště už nové).
+ * Knihovny Firebase mají verzi v adrese, takže se jen jednou stáhnou a drží v cache.
+ * Při větší změně zvyš VERZE (např. smenovnik-v4), staré cache se pak smažou. */
+const VERZE = 'smenovnik-v3';
+const SOUBORY = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'firebase-config.js'];
+const FIREBASE = 'https://www.gstatic.com/firebasejs/';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERZE).then(c => c.addAll(SOUBORY)).then(() => self.skipWaiting()));
@@ -17,7 +19,9 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const r = e.request;
-  if (r.method !== 'GET' || new URL(r.url).origin !== self.location.origin) return;
+  if (r.method !== 'GET') return;
+  const vlastni = new URL(r.url).origin === self.location.origin;
+  if (!vlastni && !r.url.startsWith(FIREBASE)) return;
   const uloz = res => {
     if (res.ok) { const kopie = res.clone(); caches.open(VERZE).then(c => c.put(r, kopie)); }
     return res;
@@ -27,7 +31,11 @@ self.addEventListener('fetch', e => {
       caches.match(r, { ignoreSearch: true }).then(hit => hit || caches.match('index.html'))));
     return;
   }
-  e.respondWith(
-    caches.match(r, { ignoreSearch: true }).then(hit => hit || fetch(r).then(uloz)).catch(() => Response.error())
-  );
+  if (!vlastni) {
+    e.respondWith(caches.match(r).then(hit => hit || fetch(r).then(uloz)));
+    return;
+  }
+  const sit = fetch(r).then(uloz);
+  e.waitUntil(sit.catch(() => {}));
+  e.respondWith(caches.match(r, { ignoreSearch: true }).then(hit => hit || sit).catch(() => Response.error()));
 });
